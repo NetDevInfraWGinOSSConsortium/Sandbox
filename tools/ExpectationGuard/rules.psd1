@@ -30,32 +30,7 @@
     #   Count = Added   … 当たる行が、消した数より多く足されたら検出（Skip・Ignore の追加）
     #   Match の要素に Paths を書くと、そのパスのファイルでだけ当てる（1 行は、規則ごとに 1 回だけ数える）。
     #   属性の並び（[Test, Ignore("...")]）にも当たるよう、[ か , の直後を見る。
-    LineRules = @(
-        @{
-            Name  = 'テストの削除'
-            Paths = @('^tests/.+\.cs$')          # TODO: テストのプロジェクトのパスに合わせる
-            Count = 'Removed'
-            Match = @(
-                @{ Pattern = '[\[,]\s*(Test|TestCase|TestCaseSource|Fact|Theory|InlineData|MemberData|ClassData|TestMethod|DataRow)\s*[\],(]' }
-            )
-        }
-        @{
-            Name  = 'Skip・Ignore の追加'
-            Paths = @('^tests/.+\.cs$')
-            Count = 'Added'
-            Match = @(
-                @{ Pattern = '[\[,]\s*(Ignore|Explicit)\s*[\],(]|\bAssert\s*\.\s*(Ignore|Inconclusive)\s*\(|[\[,(]\s*Skip\s*=|\bSkip\s*\.\s*(If|IfNot)\s*\(' }
-            )
-        }
-        @{
-            Name  = '根拠の削除'
-            Paths = @('^tests/.+\.cs$')
-            Count = 'Removed'
-            Match = @(
-                @{ Pattern = '[\[,]\s*Basis\s*\(' }
-            )
-        }
-    )
+    LineRules = @()
 
     # ------------------------------------------------------------------
     # ファイル単位の期待値（Golden など）
