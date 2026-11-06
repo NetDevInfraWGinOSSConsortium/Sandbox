@@ -7,7 +7,7 @@
     ApprovalTrailer = 'Expectation-Change'
 
     # 数えない行（コメント。コメント アウトは「消えた」と数える）
-    CommentLine = '^\s*//'
+    CommentLine = '^\s*(//|#)'
 
     # 仕組み自体のファイル（変更・削除・名前の変更を、期待値の変更と同じに扱う。追加は数えない）。
     #   本体（CheckExpectationChange.ps1）と規則のファイル（本ファイル・rules.psd1）は、本体が自分で加える。

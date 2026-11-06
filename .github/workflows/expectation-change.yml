@@ -67,6 +67,7 @@ jobs:
 
       # The copies written by install.ps1 must match the original (warning only).
       - name: Verify copies
+        if: always()
         shell: powershell
         run: |
           & (Join-Path $env:GITHUB_WORKSPACE "tools\ExpectationGuard\CheckExpectationChange.ps1") -VerifyCopy
