@@ -1,4 +1,4 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@e1f2257815d1 src/quality/ExpectationGuard/rules.common.psd1 sha256:3b334b1a4a001c4e1879e92e9eb8fe6e86d524f559fd62034cebf816c425330d
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@212ed9309936+dirty src/quality/ExpectationGuard/rules.common.psd1 sha256:d48333a5ff893cd57e2a9d9be53cc51bca0627c3f7339a70dae00757cdbc22dd
 # 期待値の変更の検出器の、共通の規則（OpenTouryoCodingAgentAssets#3）。
 #   原本は OpenTouryoCodingAgentAssets の src/quality/ExpectationGuard/。導入先では写しであり、直さない。
 #   リポジトリごとの規則は rules.psd1（見本は rules.sample.psd1）。配列はここに足され、値は rules.psd1 で上書きされる。
@@ -16,6 +16,31 @@
         '^\.claude/settings\.json$'
         '^\.claude/hooks/'
         '^\.github/workflows/expectation-change\.yml$'
+    )
+
+    # トレーラーの検査（OpenTouryoCodingAgentAssets#5）。
+    #   Found-By: <手段> [<補足>] … バグの修正（fixed #NNN）を、どこで・何で見つけたか。
+    #   値の最初の語が語彙に無ければ止める。fixed #NNN なのに無ければ警告に留める（バグかどうかは機械に分からない）。
+    #   集計：git log --format='%h %(trailers:key=Found-By,valueonly,separator=|)' <範囲>
+    #   rules.psd1 に同じ Name の規則を書くと、こちらを置き換える。
+    TrailerRules = @(
+        @{
+            Name         = 'Found-By'
+            Vocabulary   = @(
+                'spec-check'          # 原典（RFC・仕様）の確認。根拠（[Basis]）を付ける作業を含む
+                'type-review'         # 型ごと・類似不良の見直し
+                'test-added'          # テスト（単体・E2E）を足して見つかった
+                'test-failure'        # 既存のテスト・CI の失敗（断続的なものを含む）
+                'review-other-model'  # 書いたモデルとは別のモデルのレビュー
+                'review-same-model'   # 書いたモデルのレビュー（別のセッションを含む）
+                'static-analysis'     # CodeQL などの静的解析
+                'downstream'          # 利用する側（サンプル・汎用認証サイト・アプリ）の作業
+                'upstream'            # ライブラリの変更の取り込み・波及
+                'user-report'         # 利用者からの報告
+            )
+            RequiredWhen = '(?i)\bfixed\s+#\d+'
+            MissingHint  = 'バグの修正なら、見つけた手段を書く（Found-By: <手段> [<補足>]）。機能の追加なら不要。'
+        }
     )
 
     # 段 1：コマンドで書き換えそうな操作（2>$null・*>&1 のような、捨てるだけのリダイレクトは除く）。

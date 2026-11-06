@@ -1,4 +1,4 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@e1f2257815d1 src/quality/ExpectationGuard/tests/cases.psd1 sha256:3ee00c51e631df76dec3b8d7f86fcfc8d60b346765f3c9b06c6b92e4f9af8482
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@212ed9309936+dirty src/quality/ExpectationGuard/tests/cases.psd1 sha256:5156187822e0be9ad59846cc6d4d71abf6b5d189f588ee3ab26cabb114fa6702
 # 判定の用例（OpenTouryoCodingAgentAssets#3）。「この差分なら検出する／しない」を、文章ではなくテストで固定する。
 #
 #   各用例は、一時のリポジトリで次を行う。
@@ -229,6 +229,12 @@ public class FooTests
             Id = 'D15'; Category = '検出する'; Title = '語彙に無いトレーラーの値（Found-By）'
             Commits = @(@{ Message = "fixed #12 直した`n`nFound-By: gut-feeling"; Files = @{ 'src/A.cs' = "class A {}`n" } })
             Expect = @{ Exit = 1; Kinds = @() }
+        }
+        @{
+            Id = 'D18'; Category = '検出する'; Title = 'トレーラーの規則は同じ Name で置き換わる（共通の語彙にあっても、リポジトリの語彙に無ければ止める）'
+            Commits = @(@{ Message = "fixed #12 直した`n`nFound-By: user-report"; Files = @{ 'src/A.cs' = "class A {}`n" } })
+            Expect = @{ Exit = 1; Kinds = @(); Warnings = 0 }
+            Note = 'W01 の警告が 1 件（共通とリポジトリで二重に数えない）ことと併せて見る'
         }
         @{
             Id = 'D16'; Category = '検出する'; Title = '生成物の作り直しの漏れ'

@@ -1,4 +1,4 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@e1f2257815d1 src/quality/ExpectationGuard/CheckExpectationChange.ps1 sha256:a38602713146ed271e89f16facc53ac858db63a237c30b2854fafcd1288c5dee
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@212ed9309936+dirty src/quality/ExpectationGuard/CheckExpectationChange.ps1 sha256:04d503fd87ca5d5d703e609070d38447f6acd6eb46dfe9682cb897df318e6424
 <#
 .SYNOPSIS
     期待値の変更を検出し、トレーラー Expectation-Change が付いているかを確かめる（共通の本体）。
@@ -214,6 +214,10 @@ function Read-Rules([string]$CommonPath, [string]$RepoPath)
     {
         if (-not $rules.ContainsKey($k)) { $rules[$k] = @() } else { $rules[$k] = @($rules[$k]) }
     }
+    # トレーラーの規則は、同じ Name なら後（リポジトリの規則）が前（共通の規則）を置き換える（二重に数えない）
+    $byName = [ordered]@{}
+    foreach ($t in $rules["TrailerRules"]) { $byName[$t.Name] = $t }
+    $rules["TrailerRules"] = @($byName.Values)
     if (-not $rules.ContainsKey("ApprovalTrailer")) { $rules["ApprovalTrailer"] = "Expectation-Change" }
     if (-not $rules.ContainsKey("CommentLine"))     { $rules["CommentLine"] = '^\s*//' }
     return $rules
