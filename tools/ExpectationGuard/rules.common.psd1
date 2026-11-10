@@ -1,4 +1,4 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@212ed9309936+dirty src/quality/ExpectationGuard/rules.common.psd1 sha256:d48333a5ff893cd57e2a9d9be53cc51bca0627c3f7339a70dae00757cdbc22dd
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@1b6df761912f+dirty src/quality/ExpectationGuard/rules.common.psd1 sha256:d1d259a7d2b2c1cb0fa74a983ef91bde73c10a60347936e5a644a9187137bdcd
 # 期待値の変更の検出器の、共通の規則（OpenTouryoCodingAgentAssets#3）。
 #   原本は OpenTouryoCodingAgentAssets の src/quality/ExpectationGuard/。導入先では写しであり、直さない。
 #   リポジトリごとの規則は rules.psd1（見本は rules.sample.psd1）。配列はここに足され、値は rules.psd1 で上書きされる。
@@ -15,31 +15,108 @@
         '^\.githooks/'
         '^\.claude/settings\.json$'
         '^\.claude/hooks/'
+        '^\.claude/agents/'   # サブ エージェント（レビュー役など）の定義。緩めればレビューも緩む（OpenTouryo#680・MultiPurposeAuthSite#347）
         '^\.github/workflows/expectation-change\.yml$'
     )
 
-    # トレーラーの検査（OpenTouryoCodingAgentAssets#5）。
-    #   Found-By: <手段> [<補足>] … バグの修正（fixed #NNN）を、どこで・何で見つけたか。
-    #   値の最初の語が語彙に無ければ止める。fixed #NNN なのに無ければ警告に留める（バグかどうかは機械に分からない）。
-    #   集計：git log --format='%h %(trailers:key=Found-By,valueonly,separator=|)' <範囲>
+    # トレーラーの検査（OpenTouryoCodingAgentAssets#5・#12）。
+    #   Found-By: <手段> [<補足>]         … バグの修正（fixed #NNN）を、どこで・何で見つけたか
+    #   Tested-with: <種類>[, <種類>]    … コミットの前に流したテストの種類
+    #   Reviewed-with: <役> [(<モデル ID>)] … レビューした役（役の定義の名前）。役ごとに行を分ける
+    #   **記録であって証明ではない。** 人がコミットのときに経緯と合っているかを見る。
+    #   値の最初の語（List なら「,」で分けた項目ごと）が語彙に無ければ止める。RequiredWhen に当たるのに無ければ警告に留める。
+    #   git が読まない書き方（最後の段落に無い・全角の「：」・名前の綴りの違い）も止める。集計に載らないため。
+    #   止めたときは、書いた行・直した行・書き方（Syntax）・例（Example）・語彙と意味（Meanings）を出す。
+    #   集計：git log --format='%h %(trailers:key=Found-By,valueonly,separator=|) %(trailers:key=Reviewed-with,valueonly,separator=|)' <範囲>
     #   rules.psd1 に同じ Name の規則を書くと、こちらを置き換える。
     TrailerRules = @(
         @{
             Name         = 'Found-By'
+            Syntax       = 'Found-By: <手段> [<補足>]（手段が複数なら行を分ける）'
+            Placeholder  = '<手段>'
+            Example      = 'Found-By: type-review (#653 の派生)'
+            # 語彙（この順に一覧を出す）
             Vocabulary   = @(
-                'spec-check'          # 原典（RFC・仕様）の確認。根拠（[Basis]）を付ける作業を含む
-                'type-review'         # 型ごと・類似不良の見直し
-                'test-added'          # テスト（単体・E2E）を足して見つかった
-                'test-failure'        # 既存のテスト・CI の失敗（断続的なものを含む）
-                'review-other-model'  # 書いたモデルとは別のモデルのレビュー
-                'review-same-model'   # 書いたモデルのレビュー（別のセッションを含む）
-                'static-analysis'     # CodeQL などの静的解析
-                'downstream'          # 利用する側（サンプル・汎用認証サイト・アプリ）の作業
-                'upstream'            # ライブラリの変更の取り込み・波及
-                'user-report'         # 利用者からの報告
+                'spec-check'
+                'type-review'
+                'test-added'
+                'test-failure'
+                'review-other-model'
+                'review-same-model'
+                'static-analysis'
+                'downstream'
+                'upstream'
+                'user-report'
             )
+            # 語の意味。値を誤ったとき・書き忘れたときに、語と並べて出す
+            Meanings     = @{
+                'spec-check'         = '原典（RFC・仕様）の確認で見つけた。根拠（[Basis]）を付ける作業を含む'
+                'type-review'        = '型ごと・類似の不良の見直しで見つけた'
+                'test-added'         = 'テスト（単体・E2E）を足して見つけた'
+                'test-failure'       = '既存のテスト・CI の失敗で見つけた（断続的なものを含む）'
+                'review-other-model' = '書いたモデルとは別のモデルのレビューで見つけた'
+                'review-same-model'  = '書いたモデルのレビューで見つけた（別のセッションを含む）'
+                'static-analysis'    = 'CodeQL などの静的解析で見つけた'
+                'downstream'         = '利用する側（サンプル・汎用認証サイト・アプリ）の作業で見つけた（このリポジトリを使う側）'
+                'upstream'           = '使っているライブラリの変更の取り込み・波及で見つけた（このリポジトリが使う側）'
+                'user-report'        = '利用者からの報告'
+            }
             RequiredWhen = '(?i)\bfixed\s+#\d+'
             MissingHint  = 'バグの修正なら、見つけた手段を書く（Found-By: <手段> [<補足>]）。機能の追加なら不要。'
+        }
+        @{
+            Name         = 'Tested-with'
+            Syntax       = 'Tested-with: <種類>[, <種類>]（種類ごとに補足を括弧で付けてよい）'
+            Placeholder  = '<種類>'
+            Example      = 'Tested-with: unit, e2e (net48)'
+            List         = $true
+            Vocabulary   = @(
+                'unit'
+                'e2e'
+                'golden'
+                'manual'
+                'none'
+            )
+            Meanings     = @{
+                'unit'   = '単体テスト（NUnit など。B層のルート メソッドの単体テストを含む）'
+                'e2e'    = 'E2E（画面・プロトコル。Playwright など）'
+                'golden' = 'Golden（出力を丸ごと写した結果との突き合わせ）'
+                'manual' = '人の手作業の確認（画面を開いて見た など）'
+                'none'   = 'テストを流していない（文書だけの変更など。書き忘れと区別する）'
+            }
+        }
+        @{
+            Name                   = 'Reviewed-with'
+            Syntax                 = 'Reviewed-with: <役> [(<モデル ID>)]（役ごとに行を分ける）'
+            Placeholder            = '<役>'
+            Example                = 'Reviewed-with: quality-reviewer (claude-sonnet-5-5)'
+            # 役の定義のファイルの名前を語にする（確かめるコミットの木にあるもの）。役を足しても規則を直さずに済む
+            VocabularyFiles        = @('.claude/agents/*.md')
+            VocabularyFilesMeaning = '役の定義（{0}）'
+            Vocabulary             = @('human')
+            Meanings               = @{
+                'human' = '人のレビュー（役の定義を使わずに、人が差分を見た）'
+            }
+        }
+    )
+
+    # 要確認（OpenTouryoCodingAgentAssets#3 の段階 5）。止めない・トレーラーを求めない。一覧と注釈に出すだけ。
+    #   既存のテストを弱めないので期待値の変更には現れないが、互換のための判断なのでレビューの目に入れる。
+    #   ファイルごとに「足した数 − 消した数」が残れば出す（移しただけ・消しただけなら出ない）。コメントの行は数えない。
+    ReviewRules = @(
+        @{
+            Name    = '[Obsolete] の追加'
+            Paths   = @('\.cs$')
+            # [Obsolete]・[Obsolete("…")]・[System.Obsolete]・[ObsoleteAttribute]・[EditorBrowsable(…), Obsolete] など
+            Pattern = '\[\s*(\w+\s*(\([^)]*\))?\s*,\s*)*(System\s*\.\s*)?Obsolete(Attribute)?\b'
+            Hint    = '旧版の振る舞いを温存した。新しい版へ移る道と、旧版を消す時期を確かめる'
+        }
+        @{
+            Name    = '#pragma warning disable CS0618 の追加'
+            Paths   = @('\.cs$')
+            # CS0618 を含む #pragma warning disable と、番号の無い（すべての警告を消す）#pragma warning disable
+            Pattern = '^\s*#\s*pragma\s+warning\s+disable(\s*$|\s*//|[^/]*\bCS0618\b)'
+            Hint    = 'そのファイルの、ほかの [Obsolete] の警告も消える。範囲を restore で閉じているか、本当に旧版を使う必要があるかを確かめる'
         }
     )
 
