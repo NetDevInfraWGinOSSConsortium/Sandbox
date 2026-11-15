@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace OrderCalc
@@ -15,7 +15,10 @@ namespace OrderCalc
         public static decimal LineAmount(OrderLine line)
         {
             Validate(line);
-            return line.UnitPrice * line.Quantity - (decimal)line.Discount;
+            // 明細単価（割引後）＝ UnitPrice × (1 - Discount)、明細金額＝それ × Quantity。
+            // 小数第 3 位を四捨五入して小数第 2 位まで（HLD/Common.md「金額の算出式」）。
+            decimal discounted = line.UnitPrice * (1m - (decimal)line.Discount);
+            return Math.Round(discounted * line.Quantity, 2, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>小計（同一受注の全明細の明細金額の和）</summary>
@@ -24,8 +27,7 @@ namespace OrderCalc
             decimal sum = 0m;
             foreach (OrderLine line in lines)
             {
-                Validate(line);
-                sum += line.UnitPrice * line.Quantity - (decimal)line.Discount;
+                sum += LineAmount(line);
             }
             return sum;
         }
