@@ -1,4 +1,4 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@1b6df761912f+dirty src/quality/ExpectationGuard/tests/Run-Tests.ps1 sha256:8900e946e255b22e6f546a7258bbca8f957a78a8e7d666e8f7a9150c77770535
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@945878daf458 src/quality/ExpectationGuard/tests/Run-Tests.ps1 sha256:146551b25fd5f7ca11fbb7850b32d2ecce9c66bde65f2de641b4aa7edec4439b
 <#
 .SYNOPSIS
     期待値の変更の検出器の、判定の用例（cases.psd1）を回す（OpenTouryoCodingAgentAssets#3）。
@@ -28,7 +28,19 @@ param(
 $ErrorActionPreference = "Stop"
 
 $here    = $PSScriptRoot
-$guard   = Split-Path -Parent $here
+# 本体の場所。install.ps1 が写すときに、導入先のルートからのフォルダで埋める（判定の用例を本体と別の場所に置けるように。#13）。
+#   埋まっていなければ（原本のまま）、1 つ上のフォルダ。
+$checkerDir = 'tools/ExpectationGuard'
+if ($checkerDir.StartsWith('@@'))
+{
+    $guard = Split-Path -Parent $here
+}
+else
+{
+    $top = (& git -C $here rev-parse --show-toplevel 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $top) { Write-Host ("  リポジトリの中で実行してください : {0}" -f $here) -ForegroundColor Red; exit 2 }
+    $guard = [IO.Path]::GetFullPath((Join-Path $top $checkerDir))
+}
 $checker = Join-Path $guard "CheckExpectationChange.ps1"
 $common  = Join-Path $guard "rules.common.psd1"
 foreach ($f in @($checker, $common, (Join-Path $here "cases.psd1"), (Join-Path $here "rules.test.psd1"), (Join-Path $here "TestComparer.ps1")))
@@ -97,16 +109,25 @@ function Invoke-Case($Case)
         $mode = $(if ($Case.Mode) { $Case.Mode } else { "Commit" })
         $commits = @($Case.Commits | Where-Object { $_ })
         $msgFile = Join-Path $repo ".git\CASE_MSG"
+        $shas = @()   # Commits の番目（1 から）のコミットの sha。メッセージの「@SHA<番目>@」を、その先頭 8 文字に置き換える（#14）
         for ($i = 0; $i -lt $commits.Count; $i++)
         {
             $c = $commits[$i]
             if ($guardAt -eq $i + 1) { Add-Guard $repo }
             if ($c.Files) { foreach ($k in $c.Files.Keys) { Write-RepoFile $repo $k $c.Files[$k] } }
             foreach ($d in @($c.Delete)) { if ($d) { Remove-Item -LiteralPath (Join-Path $repo $d) -Force } }
-            Invoke-GitQuiet $repo @("add", "-A")
-            [IO.File]::WriteAllText($msgFile, (Get-Content2 $c.Message), $utf8)
+            if ($mode -eq "Proposed" -and $i -eq $commits.Count - 1)
+            {
+                # 提案の検査：最後の 1 つはステージしない（Stage に書いたものだけステージする）
+                foreach ($s in @($c.Stage)) { if ($s) { Invoke-GitQuiet $repo @("add", "--", $s) } }
+            }
+            else { Invoke-GitQuiet $repo @("add", "-A") }
+            $text = [regex]::Replace((Get-Content2 $c.Message), '@SHA(\d+)@', { param($m) $shas[[int]$m.Groups[1].Value - 1].Substring(0, 8) })
+            [IO.File]::WriteAllText($msgFile, $text, $utf8)
             if ($mode -eq "Staged" -and $i -eq $commits.Count - 1) { break }
+            if ($mode -eq "Proposed" -and $i -eq $commits.Count - 1) { break }
             Invoke-GitQuiet $repo @("commit", "-q", "--allow-empty", "-F", $msgFile)
+            $shas += (& git -C $repo rev-parse HEAD)
         }
 
         $body = Join-Path $repo "guard\CheckExpectationChange.ps1"
@@ -142,11 +163,17 @@ function Invoke-Case($Case)
             {
                 "Commit"    { $r = @(& $body -Commit HEAD -PassThru -Quiet) }
                 "Staged"    { $r = @(& $body -Staged -MessageFile $msgFile -PassThru -Quiet) }
+                "Proposed"  {
+                    $before = (& git diff --cached --name-status) -join "`n"
+                    $r = @(& $body -Proposed -MessageFile $msgFile -PassThru -Quiet)
+                    $proposedCode = $LASTEXITCODE   # 後の git が $LASTEXITCODE を上書きする
+                    $indexChanged = ((& git diff --cached --name-status) -join "`n") -cne $before
+                }
                 "Range"     { $r = @(& $body -Range "$root..HEAD" -PassThru -Quiet) }
                 "Generated" { $r = @(& $body -Range "$root..HEAD" -CheckGenerated -PassThru -Quiet) }
                 default     { throw "不明な Mode : $mode" }
             }
-            $code = $LASTEXITCODE
+            $code = $(if ($mode -eq "Proposed") { $proposedCode } else { $LASTEXITCODE })
         }
         finally { Pop-Location }
 
@@ -158,7 +185,9 @@ function Invoke-Case($Case)
         $reviewKinds = @($reviewItems | ForEach-Object { $_.Kind } | Sort-Object -Unique)
         $detail = (@($r | ForEach-Object { $_.Findings } | ForEach-Object { "{0} : {1}" -f $_.Kind, $_.Path }) + @($reviewItems | ForEach-Object { "要確認 {0} : {1}" -f $_.Kind, $_.Path }) + @($r | ForEach-Object { $_.Errors })) -join " / "
         $errs = @($r | ForEach-Object { $_.Errors }).Count
-        return [pscustomobject]@{ Exit = $code; Kinds = $kinds; Warnings = $warn; Errors = $errs; Review = $reviewItems.Count; ReviewKinds = $reviewKinds; Ask = $null; Detail = $detail }
+        $appr = @($r | ForEach-Object { $_.Approved }).Count
+        if ($indexChanged) { $detail = "本物の索引が変わった / " + $detail }
+        return [pscustomobject]@{ IndexChanged = [bool]$indexChanged; Exit = $code; Kinds = $kinds; Warnings = $warn; Errors = $errs; Approved = $appr; Review = $reviewItems.Count; ReviewKinds = $reviewKinds; Ask = $null; Detail = $detail }
     }
     finally
     {
@@ -182,6 +211,7 @@ foreach ($c in $cases)
             if (($want -join "|") -cne (@($a.Kinds) -join "|")) { $why += ("検出 [{0}]（期待 [{1}]）" -f (@($a.Kinds) -join ", "), ($want -join ", ")) }
         }
         if ($null -ne $e.Warnings -and $a.Warnings -ne [int]$e.Warnings) { $why += ("警告 {0} 件（期待 {1}）" -f $a.Warnings, $e.Warnings) }
+        if ($null -ne $e.Approved -and $a.Approved -ne [int]$e.Approved) { $why += ("承認の理由 {0} 件（期待 {1}）" -f $a.Approved, $e.Approved) }
         if ($null -ne $e.Errors -and $a.Errors -ne [int]$e.Errors) { $why += ("誤り {0} 件（期待 {1}）" -f $a.Errors, $e.Errors) }
         if ($null -ne $e.Review -and $a.Review -ne [int]$e.Review) { $why += ("要確認 {0} 件（期待 {1}）" -f $a.Review, $e.Review) }
         if ($null -ne $e.ReviewKinds)
@@ -189,6 +219,7 @@ foreach ($c in $cases)
             $want = @($e.ReviewKinds | Sort-Object -Unique)
             if (($want -join "|") -cne (@($a.ReviewKinds) -join "|")) { $why += ("要確認 [{0}]（期待 [{1}]）" -f (@($a.ReviewKinds) -join ", "), ($want -join ", ")) }
         }
+        if ($a.PSObject.Properties["IndexChanged"] -and $a.IndexChanged) { $why += "本物の索引が変わった（提案の検査は索引を変えない）" }
         if ($null -ne $e.Ask -and $a.Ask -ne [bool]$e.Ask) { $why += ("ask {0}（期待 {1}）" -f $a.Ask, $e.Ask) }
     }
     catch

@@ -1,7 +1,7 @@
 {
   "note": "install.ps1 が書いたファイルの目録（OpenTouryoCodingAgentAssets#20）。入れ直しで、導入先で手を入れたファイルを見分けるのに使う。install.ps1 と install/INSTALL.md の手順のほかで直さない",
   "source": "OpenTouryoCodingAgentAssets",
-  "revision": "45825b8fb4de",
+  "revision": "3da83cb03bfc",
   "files": {
     ".claude/agents/opentouryo-change-reviewer.md": { "revision": "45825b8fb4de", "source": "src/agents/opentouryo-change-reviewer.md", "sha256": "827cee5c54a55f6b4529b007b8382138596489e174033680710221bc9b0f4f28" },
     ".claude/agents/opentouryo-test-implementer.md": { "revision": "45825b8fb4de", "source": "src/agents/opentouryo-test-implementer.md", "sha256": "865449b8bcccf18590bab17be608cd62429585542143bf182141c581750c772f" },
@@ -118,6 +118,7 @@
     "AGENT-DASHBOARD.sample.md": { "revision": "45825b8fb4de", "source": "src/instructions/AGENT-DASHBOARD.sample.md", "sha256": "54401c04314754aa60e60cb4aabc0882fa25eb1e8a5e17ab84f22d29faf847d5" },
     "AGENTS.md": { "revision": "45825b8fb4de", "source": "src/instructions/AGENTS.md", "sha256": "221c5abf51407cbe1e4269d0d3fd4c8be9540ed14e5f5b2d5ab159d8a147a9cf" },
     "CLAUDE.md": { "revision": "45825b8fb4de", "source": "(install.ps1 が生成)", "sha256": "f4a95aa00e997f3bc38704c4cfcdb249fc0e943b78fd2dfb28d45cf1ab1e368c" },
+    "QUALITY.common.md": { "revision": "3da83cb03bfc", "source": "src/compass/QUALITY.common.md", "sha256": "52eb931a32041891380b7f99c8f3571063ff632ec3a06e35592f02c41923c5d5" },
     "TESTING.md": { "revision": "45825b8fb4de", "source": "src/instructions/TESTING.md", "sha256": "36fe2480a280645f3d27ae269fdb2cc0f0323a930f37ad2ff1d372483f117cfb" }
   },
   "gitignore": ["AGENT-DASHBOARD.md"]

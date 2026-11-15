@@ -1,10 +1,22 @@
-﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@1b6df761912f+dirty src/quality/ExpectationGuard/rules.common.psd1 sha256:d1d259a7d2b2c1cb0fa74a983ef91bde73c10a60347936e5a644a9187137bdcd
+﻿# expectation-guard-source: OpenTouryoCodingAgentAssets@945878daf458 src/quality/ExpectationGuard/rules.common.psd1 sha256:0e31b6bc86bd6be0479054d220efe4157e7d6f74c02bc78cbf186a78c6e371a4
 # 期待値の変更の検出器の、共通の規則（OpenTouryoCodingAgentAssets#3）。
 #   原本は OpenTouryoCodingAgentAssets の src/quality/ExpectationGuard/。導入先では写しであり、直さない。
 #   リポジトリごとの規則は rules.psd1（見本は rules.sample.psd1）。配列はここに足され、値は rules.psd1 で上書きされる。
 @{
     # 承認のトレーラー
     ApprovalTrailer = 'Expectation-Change'
+
+    # 承認の理由の書式（OpenTouryoCodingAgentAssets#6）。どれにも当たらなければ警告（止めない）。
+    #   根拠（Issue 番号・仕様の節）の無い理由は、突き合わせ役が「根拠」の観点で確かめられない。
+    #   リポジトリの規則（rules.psd1）に書くと足される（例：MultiPurposeAuthSite のテストの ID 'RT-\d+'）。
+    ApprovalReasonPatterns = @(
+        '#\d+'                                                          # Issue 番号
+        '\bRFC\s*\d+'                                                   # RFC
+        '§\s*\d'                                                        # 節（§）
+        '\d+(\.\d+)*\s*節'                                              # 節（日本語）
+        '\b(OIDC|OpenID|FAPI|JARM|OAuth|PKCE|SAML|JWT|JWS|JWE|DPoP)\b[^。]*?\d+(\.\d+)+'  # 仕様の名前と節番号
+    )
+    ApprovalReasonHint = '理由に、根拠の Issue 番号（#NNN）か仕様の節（RFC 7636 4.2 など）を書く'
 
     # 数えない行（コメント。コメント アウトは「消えた」と数える）
     CommentLine = '^\s*//'
@@ -100,6 +112,26 @@
         }
     )
 
+    # トレーラーの書き忘れ（OpenTouryoCodingAgentAssets#6）。止めない（警告）。
+    #   組の中の条件（Message：メッセージ・Trailer：ほかのトレーラーがある・Paths：変えたファイル）がすべて当たるのに、
+    #   Name のトレーラー（Value があれば、それに当たる値）が無ければ警告する。IgnoreLine に当たる行（コメント・空行）だけの変更は数えない。
+    #   リポジトリの規則（rules.psd1）に書くと、組が足される。例：リスク「高」の名前空間を fixed で変えたら、別モデルのレビュー
+    #     @{ Name = 'Reviewed-with'; Message = '(?i)\bfixed\s+#\d+'; Paths = @('^src/Auth/'); Hint = '…' }
+    TrailerRequirements = @(
+        @{
+            Name       = 'Tested-with'
+            Paths      = @('\.(cs|vb)$')
+            IgnoreLine = '^\s*(//|''|/\*|\*|$)'
+            Hint       = '流したテストの種類を書く。流していなければ Tested-with: none（書き忘れと区別する）'
+        }
+        @{
+            Name    = 'Reviewed-with'
+            Trailer = 'Expectation-Change'
+            Value   = '^opentouryo-expectation-reviewer\b'
+            Hint    = 'コミットの前に、突き合わせ役（opentouryo-expectation-reviewer）で理由と差分を突き合わせ、Reviewed-with: opentouryo-expectation-reviewer (<モデル ID>) を書く'
+        }
+    )
+
     # 要確認（OpenTouryoCodingAgentAssets#3 の段階 5）。止めない・トレーラーを求めない。一覧と注釈に出すだけ。
     #   既存のテストを弱めないので期待値の変更には現れないが、互換のための判断なのでレビューの目に入れる。
     #   ファイルごとに「足した数 − 消した数」が残れば出す（移しただけ・消しただけなら出ない）。コメントの行は数えない。
@@ -114,8 +146,9 @@
         @{
             Name    = '#pragma warning disable CS0618 の追加'
             Paths   = @('\.cs$')
-            # CS0618 を含む #pragma warning disable と、番号の無い（すべての警告を消す）#pragma warning disable
-            Pattern = '^\s*#\s*pragma\s+warning\s+disable(\s*$|\s*//|[^/]*\bCS0618\b)'
+            # CS0618 を含む #pragma warning disable と、番号の無い（すべての警告を消す）#pragma warning disable。
+            #   C# は CS を付けない番号（disable 618）も受ける（MultiPurposeAuthSite 399ac20b）
+            Pattern = '^\s*#\s*pragma\s+warning\s+disable(\s*$|\s*//|[^/]*\b(CS)?0*618\b)'
             Hint    = 'そのファイルの、ほかの [Obsolete] の警告も消える。範囲を restore で閉じているか、本当に旧版を使う必要があるかを確かめる'
         }
     )
