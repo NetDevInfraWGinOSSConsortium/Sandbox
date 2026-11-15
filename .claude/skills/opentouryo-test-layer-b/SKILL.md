@@ -9,6 +9,8 @@ metadata:
 
 # B層のルート メソッドの単体テスト（NUnit）
 
+> **このリポジトリでは**：テストのプロジェクトは `tests/OrderCalc.Tests`（net10.0）。`dotnet test` で流す。
+
 > 📋 **コピー元スニペット**：`references/snippets.md`（csproj 2 種・App.config・TestSetup・[Basis]・テストの骨格。実装時はここから写す）。
 
 進め方（テスト仕様 → Red → Green）と、承認したテストを守る規則は **`TESTING.md`**。このスキルは「どう書くか」だけを扱う。

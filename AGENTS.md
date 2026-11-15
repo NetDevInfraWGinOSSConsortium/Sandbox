@@ -226,7 +226,7 @@ TODO
   フレームワークが捕捉し、正常系の戻り値（`ErrorFlag = true`）に変換する。呼び出し側で
   `catch` してはならない（飛んでこない）。詳細は `opentouryo-exception` を参照。
 - **新規 `.cs`/`.vb` にはファイルヘッダ**（所属機能名バナー＋クラス情報＋更新履歴表を言語コメントで）。クラス・メソッドは XML doc（`/// <summary>`）。詳細＝`opentouryo-comment-convention`。
-- TODO
+- **金額は `decimal` で計算する**（`float`・`double` を使わない。NorthwindDbSampleSpec の HLD/Common.md「金額の算出式」）。
 
 ## MS 系開発ツールの落とし穴（横断）
 
@@ -291,7 +291,7 @@ MS ツールチェーン起因で**「ビルドは通るのに壊れる／静か
 
 - ビルド: net48 は msbuild（非 SDK csproj・VS Build Tools 前提）、net10.0 は `dotnet build`
 - テスト: B層の単体テストは NUnit（`<Webプロジェクト名>.Tests`）。net10.0 は `dotnet test <csproj>`、net48 は MSBuild で組んで `dotnet test <csproj> --no-build`（`opentouryo-test-layer-b`）。画面の E2E は NUnit・Playwright（`<Webプロジェクト名>.E2ETests`。`opentouryo-test-e2e-web`）
-- 実行: TODO
+- 実行: `dotnet test tests/OrderCalc.Tests/OrderCalc.Tests.csproj`（このリポジトリには画面が無い）
 
 **新規プロジェクトの立ち上げ**（OpenTouryo を取得・ビルドし、サンプルを起点に構成する）は
 `opentouryo-project-setup` を参照。基盤はビルド済み DLL を参照する（ソースを取り込まない）。
