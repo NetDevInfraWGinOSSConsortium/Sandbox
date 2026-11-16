@@ -64,6 +64,49 @@ namespace OrderCalc.Tests
             Assert.That(OrderAmount.Total(lines, 32.38m), Is.EqualTo(200.38m));
         }
 
+        // 根拠：#13（HLD/Common.md「金額の算出式」：Discount は 0〜1、VAL-NUMERIC：割引 0〜1。14.00 × (1 − 1) × 12 = 0.00）
+        [Test]
+        public void LineAmount_割引率1は0円_Issue13()
+        {
+            Assert.That(OrderAmount.LineAmount(new OrderLine(14.00m, 12, 1f)), Is.EqualTo(0.00m));
+        }
+
+        // 根拠：#13（同じ型の横展開。HLD/Common.md VAL-NUMERIC：単価 >= 0。0.00 × 12 = 0.00）
+        [Test]
+        public void LineAmount_単価0は0円_Issue13()
+        {
+            Assert.That(OrderAmount.LineAmount(new OrderLine(0.00m, 12, 0f)), Is.EqualTo(0.00m));
+        }
+
+        // 根拠：#13（割引率 1 の明細も小計に入る：0.00 + 98.00 = 98.00）
+        [Test]
+        public void Subtotal_割引率1の明細を含む_Issue13()
+        {
+            var lines = new[] { new OrderLine(14.00m, 12, 1f), new OrderLine(9.80m, 10, 0f) };
+            Assert.That(OrderAmount.Subtotal(lines), Is.EqualTo(98.00m));
+        }
+
+        // 根拠：#13（VAL-NUMERIC：割引 0〜1。境界の直外は範囲外）
+        [Test]
+        public void LineAmount_割引率が1をわずかに超えると例外_Issue13()
+        {
+            Assert.That(() => OrderAmount.LineAmount(new OrderLine(14.00m, 12, 1.0001f)), Throws.TypeOf<System.ArgumentOutOfRangeException>());
+        }
+
+        // 根拠：#13（VAL-NUMERIC：割引 0〜1。負は範囲外）
+        [Test]
+        public void LineAmount_割引率が負だと例外_Issue13()
+        {
+            Assert.That(() => OrderAmount.LineAmount(new OrderLine(14.00m, 12, -0.1f)), Throws.TypeOf<System.ArgumentOutOfRangeException>());
+        }
+
+        // 根拠：#13（VAL-NUMERIC：単価 >= 0。負は範囲外）
+        [Test]
+        public void LineAmount_単価が負だと例外_Issue13()
+        {
+            Assert.That(() => OrderAmount.LineAmount(new OrderLine(-0.01m, 12, 0f)), Throws.TypeOf<System.ArgumentOutOfRangeException>());
+        }
+
         [Test]
         public void LineAmount_割引率が1を超えると例外()
         {
