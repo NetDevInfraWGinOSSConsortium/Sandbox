@@ -41,9 +41,9 @@ namespace OrderCalc
 
         private static void Validate(OrderLine line)
         {
-            if (line.UnitPrice < 0m) throw new ArgumentOutOfRangeException(nameof(line), "UnitPrice");
+            if (line.UnitPrice <= 0m) throw new ArgumentOutOfRangeException(nameof(line), "UnitPrice");
             if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line), "Quantity");
-            if (line.Discount < 0f || line.Discount > 1f) throw new ArgumentOutOfRangeException(nameof(line), "Discount");
+            if (line.Discount < 0f || line.Discount >= 1f) throw new ArgumentOutOfRangeException(nameof(line), "Discount");
         }
     }
 }
