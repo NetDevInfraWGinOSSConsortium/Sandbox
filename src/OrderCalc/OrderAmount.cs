@@ -39,11 +39,12 @@ namespace OrderCalc
             return Subtotal(lines) + freight;
         }
 
+        // 範囲は HLD/Common.md の VAL-NUMERIC（数量 > 0、単価 >= 0、割引 0〜1。境界を含む）。
         private static void Validate(OrderLine line)
         {
-            if (line.UnitPrice <= 0m) throw new ArgumentOutOfRangeException(nameof(line), "UnitPrice");
+            if (line.UnitPrice < 0m) throw new ArgumentOutOfRangeException(nameof(line), "UnitPrice");
             if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line), "Quantity");
-            if (line.Discount < 0f || line.Discount >= 1f) throw new ArgumentOutOfRangeException(nameof(line), "Discount");
+            if (line.Discount < 0f || line.Discount > 1f) throw new ArgumentOutOfRangeException(nameof(line), "Discount");
         }
     }
 }
